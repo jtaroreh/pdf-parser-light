@@ -2,7 +2,7 @@
   <img src="icon.png" alt="PDF Parser Light Logo" width="128" height="128">
 </p>
 
-# PDF Parser Light
+# PDF Parser Light [Releases](https://github.com/jtaroreh/pdf-parser-light/releases)
 
 A modern, lightweight desktop and command-line application for transcribing PDF files into Markdown/text (incl. LaTeX equations and HTML tables) using the generous free tier of Google Gemini API. Built with Python, CustomTkinter, and automated cross-platform PyInstaller packaging.
 
@@ -38,7 +38,7 @@ Many commercial document parsers, math OCR tools, and cloud document APIs impose
 
 ## Downloads & Installation
 
-Pre-built standalone executables can be downloaded from the [Releases](https://github.com/jtaroreh/pdf-parser-light-test/releases) page.
+Pre-built standalone executables can be downloaded from the [Releases](https://github.com/jtaroreh/pdf-parser-light/releases) page.
 
 1. **Select your Operating System:**
    - **macOS**: Download `pdf-parser-light-macos.zip`, extract it, and move `PDF Parser Light.app` to your `/Applications` folder.
