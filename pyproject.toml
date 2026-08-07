@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "pdf-parser-light"
 version = "0.1.0"
 description = "PDF Parser Light using CustomTkinter and Gemini API"
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
 dependencies = [

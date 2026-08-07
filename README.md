@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/jtaroreh/pdf-parser-light/releases"><img src="https://img.shields.io/github/v/release/jtaroreh/pdf-parser-light?color=blue" alt="GitHub Release"></a>  
+  <a href="https://pypi.org/project/pdf-parser-light/"><img src="https://img.shields.io/pypi/v/pdf-parser-light.svg" alt="PyPI Package"></a>
   <a href="https://github.com/jtaroreh/pdf-parser-light/actions"><img src="https://github.com/jtaroreh/pdf-parser-light/actions/workflows/build-and-release.yml/badge.svg" alt="Build Status"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-3776AB.svg?logo=python&logoColor=white" alt="Python 3.9+"></a>
@@ -46,6 +47,8 @@ Many commercial document parsers, math OCR tools, and cloud document APIs impose
 
 ## Downloads & Installation
 
+### Option 1: Standalone Pre-built Executables
+
 Pre-built standalone executables can be downloaded from the [Releases](https://github.com/jtaroreh/pdf-parser-light/releases) page.
 
 1. **Select your Operating System:**
@@ -53,7 +56,7 @@ Pre-built standalone executables can be downloaded from the [Releases](https://g
    - **Windows**: Download `pdf-parser-light-windows.zip`, extract it, and launch `PDF Parser Light.exe`.
    - **Linux**: Download `pdf-parser-light-linux.tar.gz`, extract it, and run `PDF Parser Light`. *(Note: Minimal distributions may require Tcl/Tk libraries via `sudo apt install python3-tk`)*.
 
-### Opening Unsigned Binaries (Security Prompts)
+#### Opening Unsigned Binaries (Security Prompts)
 
 Because standalone releases are built via CI without commercial developer certificates, your OS may present security warnings on first launch:
 
@@ -65,6 +68,19 @@ Because standalone releases are built via CI without commercial developer certif
     ```
 - **Windows (SmartScreen)**: Click **More info**, then click **Run anyway**.
 
+### Option 2: Install via PyPI (Python Package)
+
+If you have Python 3.9+ installed, install directly using `pip`:
+
+```bash
+pip install pdf-parser-light
+```
+
+Launch the GUI or CLI directly from your terminal:
+```bash
+pdf-parser-light-gui   # Launches Modern Desktop GUI
+pdf-parser-light       # Launches Command Line Interface
+```
 ---
 
 ## Usage Guide
