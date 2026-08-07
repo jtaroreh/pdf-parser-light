@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Mac OS
+.DS_Store
+
+# Virtual environment
+venv/
+env/
+.env
+
+# Build and PyInstaller artifacts
+build/
+dist/
+*.egg-info/
+.crates.toml
+.crates2.json
+bin/
+"PDF Parser Light.app"/
+*.zip
+
+# Logs
+app_run.log
+*.log
+
+# Temporary test artifacts
+.tmp_*
+
