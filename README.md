@@ -4,7 +4,15 @@
 
 # PDF Parser Light
 
-[[Releases](https://github.com/jtaroreh/pdf-parser-light/releases)] A modern, lightweight desktop and command-line application for transcribing PDF files into Markdown/text (incl. LaTeX equations and HTML tables) using the generous free tier of Google Gemini API. Built with Python, CustomTkinter, and automated cross-platform PyInstaller packaging.
+<p align="center">
+  <a href="https://github.com/jtaroreh/pdf-parser-light/releases"><img src="https://img.shields.io/github/v/release/jtaroreh/pdf-parser-light?color=blue" alt="GitHub Release"></a>  
+  <a href="https://github.com/jtaroreh/pdf-parser-light/actions"><img src="https://github.com/jtaroreh/pdf-parser-light/actions/workflows/build-and-release.yml/badge.svg" alt="Build Status"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-3776AB.svg?logo=python&logoColor=white" alt="Python 3.9+"></a>
+  <a href="https://aistudio.google.com/"><img src="https://img.shields.io/badge/AI-Google%20Gemini%20API-8E75B2.svg?logo=google&logoColor=white" alt="Powered by Gemini API"></a>
+</p>
+
+A modern, lightweight desktop and command-line application for transcribing PDF files into Markdown/text (incl. LaTeX equations and HTML tables) using the generous free tier of Google Gemini API. Built with Python, CustomTkinter, and automated cross-platform PyInstaller packaging.
 
 <p align="center">
   <img src="hero.gif" alt="PDF Parser Light Demo" width="400">

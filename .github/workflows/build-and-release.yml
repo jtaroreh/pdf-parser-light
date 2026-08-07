@@ -65,8 +65,9 @@ jobs:
           echo "macOS smoke test failed with exit code $CODE"
           exit 1
         fi
+        cp GETTING_STARTED.txt dist/
         cd dist
-        zip -r pdf-parser-light-macos.zip "PDF Parser Light.app"
+        zip -r pdf-parser-light-macos.zip "PDF Parser Light.app" GETTING_STARTED.txt
 
     - name: Smoke Test & Package Executable (Windows)
       if: matrix.os == 'windows-latest'
@@ -85,8 +86,9 @@ jobs:
             Write-Error "Windows smoke test failed with exit code $($proc.ExitCode)"
             exit 1
         }
+        Copy-Item GETTING_STARTED.txt -Destination dist/
         cd dist
-        Compress-Archive -Path "PDF Parser Light.exe" -DestinationPath pdf-parser-light-windows.zip
+        Compress-Archive -Path "PDF Parser Light.exe", "GETTING_STARTED.txt" -DestinationPath pdf-parser-light-windows.zip
 
     - name: Smoke Test & Package Executable (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -105,8 +107,9 @@ jobs:
           echo "Linux smoke test failed with exit code $CODE"
           exit 1
         fi
+        cp GETTING_STARTED.txt dist/
         cd dist
-        tar -czvf pdf-parser-light-linux.tar.gz "PDF Parser Light"
+        tar -czvf pdf-parser-light-linux.tar.gz "PDF Parser Light" GETTING_STARTED.txt
 
 
 

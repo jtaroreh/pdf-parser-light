@@ -3,6 +3,7 @@ import queue
 import sys
 import threading
 import traceback
+import webbrowser
 from tkinter import filedialog
 
 import customtkinter as ctk
@@ -161,7 +162,17 @@ class App(BaseApp):
             anchor="w",
             font=ctk.CTkFont(weight="bold")
         )
-        self.api_key_label.grid(row=0, column=0, padx=20, pady=(20, 5), sticky="w")
+        self.api_key_label.grid(row=0, column=0, padx=(20, 0), pady=(20, 5), sticky="w")
+
+        self.api_key_link = ctk.CTkLabel(
+            self,
+            text="(Get free key ↗)",
+            font=ctk.CTkFont(size=12, underline=True),
+            text_color=("#1F6AA5", "#4C9BE8"),
+            cursor="hand2"
+        )
+        self.api_key_link.grid(row=0, column=0, padx=(135, 0), pady=(20, 5), sticky="w")
+        self.api_key_link.bind("<Button-1>", lambda e: webbrowser.open("https://aistudio.google.com/api-keys"))
 
         self.usage_label = ctk.CTkLabel(
             self,

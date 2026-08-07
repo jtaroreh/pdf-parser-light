@@ -1,0 +1,47 @@
+===================================================================
+                  PDF Parser Light - Getting Started
+===================================================================
+
+Thank you for downloading PDF Parser Light!
+
+
+FIRST-TIME LAUNCH SECURITY NOTES (Unsigned Executables):
+
+  - macOS (Gatekeeper):
+    - Move the app to /Applications folder.
+    - Option 1 (Finder / System Settings): 
+      - Control-Click (or Right-Click) "PDF Parser Light.app" and select "Open".
+      - When the '"PDF Parser Light" Not Opened' prompt appears, click "Done" (do NOT click "Move to Trash").
+      - Open System Settings -> Privacy & Security, scroll down to the Security section.
+      - Click "Open Anyway" next to PDF Parser Light, enter your password/Touch ID, and click "Open".
+    - Option 2 (Terminal Command): Strip the download quarantine attribute directly in your Terminal:
+      xattr -d com.apple.quarantine "/Applications/PDF Parser Light.app"
+
+  - Windows (SmartScreen):
+    - Click "More info", then click "Run anyway".
+
+  - Linux:
+    - Make binary executable: chmod +x "PDF Parser Light"
+    - (Minimal distros like Ubuntu/Debian minimal may require Tk support):
+        sudo apt install python3-tk
+
+
+
+Watch visual tutorial (GIF): https://raw.githubusercontent.com/jtaroreh/pdf-parser-light/main/tutorial.gif
+
+1. GETTING YOUR FREE API KEY (Takes ~30 seconds):
+   - Visit: https://aistudio.google.com/api-keys
+   - Sign in with any Google account.
+   - Click "Create API Key" and copy your key.
+
+2. USING THE APP:
+   - Launch PDF Parser Light.
+   - Paste your API key into the text field at the top.
+   - Check "Remember API Key" if you want to save it locally.
+   - Drag and drop a PDF file onto the app (or click "Browse File").
+   - Click "Process" to transcribe your document into Markdown.
+   - Click "Save Output" or "Copy to Clipboard".
+
+3. NEED HELP OR COMMAND-LINE USAGE?
+   - Visit the official repository: https://github.com/jtaroreh/pdf-parser-light
+   - For detailed documentation, please refer to the README.md file.
