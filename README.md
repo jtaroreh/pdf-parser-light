@@ -182,8 +182,8 @@ flowchart TD
 
 ```bash
 # Clone repository
-git clone https://github.com/jtaroreh/pdf-parser-light-test.git
-cd pdf-parser-light-test
+git clone https://github.com/jtaroreh/pdf-parser-light.git
+cd pdf-parser-light
 
 # Setup virtual environment and dependencies
 python3 -m venv venv
