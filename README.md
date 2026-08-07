@@ -4,7 +4,7 @@
 
 # PDF Parser Light
 
-[Releases](https://github.com/jtaroreh/pdf-parser-light/releases) A modern, lightweight desktop and command-line application for transcribing PDF files into Markdown/text (incl. LaTeX equations and HTML tables) using the generous free tier of Google Gemini API. Built with Python, CustomTkinter, and automated cross-platform PyInstaller packaging.
+[[Releases](https://github.com/jtaroreh/pdf-parser-light/releases)] A modern, lightweight desktop and command-line application for transcribing PDF files into Markdown/text (incl. LaTeX equations and HTML tables) using the generous free tier of Google Gemini API. Built with Python, CustomTkinter, and automated cross-platform PyInstaller packaging.
 
 <p align="center">
   <img src="hero.gif" alt="PDF Parser Light Demo" width="400">
@@ -49,7 +49,12 @@ Pre-built standalone executables can be downloaded from the [Releases](https://g
 
 Because standalone releases are built via CI without commercial developer certificates, your OS may present security warnings on first launch:
 
-- **macOS (Gatekeeper)**: If macOS says the app cannot be opened because it is from an unidentified developer, **Control-Click (or Right-Click)** `PDF Parser Light.app`, select **Open**, and click **Open** in the confirmation dialog.
+- **macOS (Gatekeeper)**:
+  - **Option 1 (Finder / System Settings)**: **Control-Click (or Right-Click)** `PDF Parser Light.app`, select **Open**, and click **Open**. On macOS Sequoia (15+), go to **System Settings → Privacy & Security**, scroll down to the Security section, and click **Open Anyway**.
+  - **Option 2 (Terminal Command)**: Strip the download quarantine attribute directly:
+    ```bash
+    xattr -d com.apple.quarantine "/Applications/PDF Parser Light.app"
+    ```
 - **Windows (SmartScreen)**: Click **More info**, then click **Run anyway**.
 
 ---
