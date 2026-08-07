@@ -132,6 +132,26 @@ def test_caret_color_matches_text_color():
     except Exception as e:
         pytest.skip(f"Skipping GUI test in headless environment: {e}")
 
+def test_api_key_link_click(monkeypatch):
+    """Verify that clicking api_key_link invokes webbrowser.open."""
+    try:
+        from pdf_parser_light.app import App
+        app = App()
+        app.withdraw()
+
+        opened_urls = []
+        monkeypatch.setattr("webbrowser.open", lambda url: opened_urls.append(url))
+
+        # Event generation/trigger on api_key_link
+        app.api_key_link.event_generate("<Button-1>")
+        assert len(opened_urls) == 1
+        assert opened_urls[0] == "https://aistudio.google.com/api-keys"
+
+        app.destroy()
+    except Exception as e:
+        pytest.skip(f"Skipping GUI test in headless environment: {e}")
+
+
 
 
 

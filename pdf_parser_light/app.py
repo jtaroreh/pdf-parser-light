@@ -156,30 +156,40 @@ class App(BaseApp):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(7, weight=1)  # The console textbox expands
 
+        self.api_header_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.api_header_frame.grid(row=0, column=0, padx=20, pady=(20, 5), sticky="ew")
+        self.api_header_frame.grid_columnconfigure(2, weight=1)
+
         self.api_key_label = ctk.CTkLabel(
-            self, 
+            self.api_header_frame, 
             text="Gemini API Key:", 
             anchor="w",
             font=ctk.CTkFont(weight="bold")
         )
-        self.api_key_label.grid(row=0, column=0, padx=(20, 0), pady=(20, 5), sticky="w")
+        self.api_key_label.grid(row=0, column=0, sticky="w")
 
         self.api_key_link = ctk.CTkLabel(
-            self,
+            self.api_header_frame,
             text="(Get free key ↗)",
             font=ctk.CTkFont(size=12, underline=True),
             text_color=("#1F6AA5", "#4C9BE8"),
             cursor="hand2"
         )
-        self.api_key_link.grid(row=0, column=0, padx=(135, 0), pady=(20, 5), sticky="w")
-        self.api_key_link.bind("<Button-1>", lambda e: webbrowser.open("https://aistudio.google.com/api-keys"))
+        self.api_key_link.grid(row=0, column=1, padx=(8, 0), sticky="w")
+
+        def _open_free_key_url(e=None):
+            webbrowser.open("https://aistudio.google.com/api-keys")
+
+        for widget in (self.api_key_link, getattr(self.api_key_link, "_label", None), getattr(self.api_key_link, "_canvas", None)):
+            if widget:
+                widget.bind("<Button-1>", _open_free_key_url)
 
         self.usage_label = ctk.CTkLabel(
-            self,
+            self.api_header_frame,
             text="",
             text_color="gray"
         )
-        self.usage_label.grid(row=0, column=0, padx=20, pady=(20, 5), sticky="e")
+        self.usage_label.grid(row=0, column=2, sticky="e")
         self.update_usage_label()
 
         self.api_key_entry = ctk.CTkEntry(
