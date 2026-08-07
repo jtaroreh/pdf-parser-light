@@ -2,9 +2,9 @@
   <img src="icon.png" alt="PDF Parser Light Logo" width="128" height="128">
 </p>
 
-# PDF Parser Light [Releases](https://github.com/jtaroreh/pdf-parser-light/releases)
+# PDF Parser Light
 
-A modern, lightweight desktop and command-line application for transcribing PDF files into Markdown/text (incl. LaTeX equations and HTML tables) using the generous free tier of Google Gemini API. Built with Python, CustomTkinter, and automated cross-platform PyInstaller packaging.
+[Releases](https://github.com/jtaroreh/pdf-parser-light/releases) A modern, lightweight desktop and command-line application for transcribing PDF files into Markdown/text (incl. LaTeX equations and HTML tables) using the generous free tier of Google Gemini API. Built with Python, CustomTkinter, and automated cross-platform PyInstaller packaging.
 
 <p align="center">
   <img src="hero.gif" alt="PDF Parser Light Demo" width="400">
