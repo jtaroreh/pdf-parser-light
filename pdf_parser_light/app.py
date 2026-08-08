@@ -424,10 +424,10 @@ class App(BaseApp):
     def _on_global_click(self, event=None):
         if event is None or not hasattr(event, "widget"):
             return
-        if not self._is_textbox_widget(event.widget):
+        if not self._is_interactive_widget(event.widget):
             self.after(10, self.deselect_textboxes)
 
-    def _is_textbox_widget(self, widget):
+    def _is_interactive_widget(self, widget):
         current = widget
         if isinstance(current, str):
             try:
@@ -436,11 +436,17 @@ class App(BaseApp):
                 return False
 
         while current is not None:
-            if isinstance(current, (ctk.CTkEntry, ctk.CTkTextbox, tkinter.Entry, tkinter.Text)):
+            if isinstance(current, (ctk.CTkButton, ctk.CTkCheckBox, ctk.CTkOptionMenu, ctk.CTkEntry, ctk.CTkTextbox, tkinter.Entry, tkinter.Text, tkinter.Button, tkinter.Checkbutton)):
                 return True
             class_name = current.__class__.__name__
-            if ("Entry" in class_name or "Textbox" in class_name or "Text" in class_name) and not isinstance(current, ctk.CTkLabel):
+            if any(k in class_name for k in ("Button", "CheckBox", "OptionMenu", "Entry", "Textbox", "Text", "Menu")):
                 return True
+            try:
+                cursor_val = current.cget("cursor") if hasattr(current, "cget") else None
+                if cursor_val == "hand2":
+                    return True
+            except Exception:
+                pass
             try:
                 parent_name = current.winfo_parent()
                 if not parent_name:

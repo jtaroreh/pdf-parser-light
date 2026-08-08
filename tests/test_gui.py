@@ -104,11 +104,11 @@ def test_click_outside_deselects_textbox():
             def __init__(self, widget):
                 self.widget = widget
 
-        # Verify _is_textbox_widget identifies CTkEntry and internal entry
-        assert app._is_textbox_widget(app.api_key_entry)
-        assert app._is_textbox_widget(app.api_key_entry._entry)
-        assert not app._is_textbox_widget(app.drop_frame)
-        assert not app._is_textbox_widget(app.api_key_label)
+        # Verify _is_interactive_widget identifies CTkEntry, CTkButton, and internal controls
+        assert app._is_interactive_widget(app.api_key_entry)
+        assert app._is_interactive_widget(app.api_key_entry._entry)
+        assert app._is_interactive_widget(app.process_btn)
+        assert not app._is_interactive_widget(app.drop_frame)
 
         # Ensure event handlers execute without error on click inside vs click outside
         app._on_global_click(MockEvent(app.api_key_entry._entry))
