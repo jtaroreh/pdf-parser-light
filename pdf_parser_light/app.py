@@ -178,7 +178,7 @@ class App(BaseApp):
         self.api_key_link.grid(row=0, column=1, padx=(8, 0), sticky="w")
 
         def _open_free_key_url(e=None):
-            webbrowser.open("https://aistudio.google.com/api-keys")
+            self.after(10, lambda: webbrowser.open("https://aistudio.google.com/api-keys"))
 
         for widget in (self.api_key_link, getattr(self.api_key_link, "_label", None), getattr(self.api_key_link, "_canvas", None)):
             if widget:
@@ -295,13 +295,20 @@ class App(BaseApp):
         )
         self.browse_btn.pack()
 
-        # Make entire drop zone card clickable to browse file
+        # Make entire drop zone card clickable to browse file (ignore direct clicks on browse_btn to prevent double-invocation)
+        def _on_dropzone_click(e=None):
+            if e and hasattr(e, "widget"):
+                w = e.widget
+                if w in (self.browse_btn, getattr(self.browse_btn, "_canvas", None), getattr(self.browse_btn, "_label", None)):
+                    return
+            self.browse_file()
+
         for widget in (self.drop_frame, self.drop_content_frame, self.drop_title_label, self.drop_sub_label):
-            widget.bind("<Button-1>", lambda e: self.browse_file())
+            widget.bind("<Button-1>", _on_dropzone_click)
 
         if getattr(self, "dnd_enabled", False):
             try:
-                for widget in (self, self.drop_frame, self.drop_content_frame, self.drop_title_label, self.drop_sub_label):
+                for widget in (self.drop_frame, self.drop_content_frame, self.drop_title_label, self.drop_sub_label):
                     targets = []
                     if hasattr(widget, "drop_target_register"):
                         targets.append(widget)
@@ -418,7 +425,7 @@ class App(BaseApp):
         if event is None or not hasattr(event, "widget"):
             return
         if not self._is_textbox_widget(event.widget):
-            self.deselect_textboxes()
+            self.after(10, self.deselect_textboxes)
 
     def _is_textbox_widget(self, widget):
         current = widget
@@ -444,29 +451,31 @@ class App(BaseApp):
         return False
 
     def deselect_textboxes(self):
-        self.focus_set()
-        def _clear_widget(w):
-            if isinstance(w, (ctk.CTkEntry, tkinter.Entry)):
-                try:
-                    target = getattr(w, "_entry", w)
-                    if hasattr(target, "selection_clear"):
-                        target.selection_clear()
-                except Exception:
-                    pass
-            elif isinstance(w, (ctk.CTkTextbox, tkinter.Text)):
-                try:
-                    target = getattr(w, "_textbox", w)
-                    if hasattr(target, "tag_remove"):
-                        target.tag_remove("sel", "1.0", "end")
-                except Exception:
-                    pass
-            if hasattr(w, "winfo_children"):
-                try:
-                    for child in w.winfo_children():
-                        _clear_widget(child)
-                except Exception:
-                    pass
-        _clear_widget(self)
+        focused = self.focus_get()
+        if focused and self._is_textbox_widget(focused):
+            self.focus_set()
+            def _clear_widget(w):
+                if isinstance(w, (ctk.CTkEntry, tkinter.Entry)):
+                    try:
+                        target = getattr(w, "_entry", w)
+                        if hasattr(target, "selection_clear"):
+                            target.selection_clear()
+                    except Exception:
+                        pass
+                elif isinstance(w, (ctk.CTkTextbox, tkinter.Text)):
+                    try:
+                        target = getattr(w, "_textbox", w)
+                        if hasattr(target, "tag_remove"):
+                            target.tag_remove("sel", "1.0", "end")
+                    except Exception:
+                        pass
+                if hasattr(w, "winfo_children"):
+                    try:
+                        for child in w.winfo_children():
+                            _clear_widget(child)
+                    except Exception:
+                        pass
+            _clear_widget(self)
 
     def _force_refresh(self):
         try:
@@ -475,6 +484,12 @@ class App(BaseApp):
             self.deiconify()
             self.update_idletasks()
             self.lift()
+            try:
+                self.attributes("-topmost", True)
+                self.after(100, lambda: self.winfo_exists() and self.attributes("-topmost", False))
+                self.focus_force()
+            except Exception:
+                pass
             w = self.winfo_width()
             h = self.winfo_height()
             if w <= 1 or h <= 1:
@@ -583,11 +598,13 @@ class App(BaseApp):
             self.set_selected_file(paths[0].strip("{}'\" "))
 
     def browse_file(self, event=None):
-        file_path = filedialog.askopenfilename(
-            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
-        )
-        if file_path:
-            self.set_selected_file(file_path)
+        def _do_browse():
+            file_path = filedialog.askopenfilename(
+                filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
+            )
+            if file_path:
+                self.set_selected_file(file_path)
+        self.after(10, _do_browse)
 
     def set_selected_file(self, file_path):
         if not file_path or not os.path.exists(file_path):
@@ -874,30 +891,31 @@ class App(BaseApp):
         if not self.markdown_result:
             return
             
-        selected_ext = self.format_var.get()
-        
-        if selected_ext == ".md":
-            file_types = [("Markdown files", "*.md"), ("All files", "*.*")]
-        else:
-            file_types = [("Text files", "*.txt"), ("All files", "*.*")]
+        def _do_save():
+            selected_ext = self.format_var.get()
+            
+            if selected_ext == ".md":
+                file_types = [("Markdown files", "*.md"), ("All files", "*.*")]
+            else:
+                file_types = [("Text files", "*.txt"), ("All files", "*.*")]
 
-        save_path = filedialog.asksaveasfilename(
-            defaultextension=selected_ext,
-            filetypes=file_types
-        )
-        
-        if save_path:
-            # If the user typed a name but didn't supply an extension, append selected_ext
-            if not os.path.splitext(save_path)[1]:
-                save_path += selected_ext
+            save_path = filedialog.asksaveasfilename(
+                defaultextension=selected_ext,
+                filetypes=file_types
+            )
+            
+            if save_path:
+                if not os.path.splitext(save_path)[1]:
+                    save_path += selected_ext
 
-            try:
-                with open(save_path, "w", encoding="utf-8") as f:
-                    f.write(self.markdown_result)
-                self.show_success(f"File successfully saved to:\n{save_path}")
-            except Exception as e:
-                traceback.print_exc()
-                self.show_error("Failed to save file. Please check the log for details.")
+                try:
+                    with open(save_path, "w", encoding="utf-8") as f:
+                        f.write(self.markdown_result)
+                    self.show_success(f"File successfully saved to:\n{save_path}")
+                except Exception as e:
+                    traceback.print_exc()
+                    self.show_error("Failed to save file. Please check the log for details.")
+        self.after(10, _do_save)
 
     def copy_to_clipboard(self):
         if not self.markdown_result:
@@ -912,6 +930,16 @@ class App(BaseApp):
             traceback.print_exc()
             self.show_error("Failed to copy to clipboard. Please check the log for details.")
 
+    def _close_modal(self, win):
+        try:
+            win.grab_release()
+        except Exception:
+            pass
+        try:
+            win.destroy()
+        except Exception:
+            pass
+
     def show_error(self, message):
         error_window = ctk.CTkToplevel(self)
         error_window.title("Error")
@@ -924,7 +952,7 @@ class App(BaseApp):
         textbox.insert("1.0", message)
         textbox.configure(state="disabled")
         
-        btn = ctk.CTkButton(error_window, text="OK", command=error_window.destroy, width=100)
+        btn = ctk.CTkButton(error_window, text="OK", command=lambda: self._close_modal(error_window), width=100)
         btn.pack(pady=(0, 15))
 
     def show_success(self, message):
@@ -937,7 +965,7 @@ class App(BaseApp):
         lbl = ctk.CTkLabel(success_window, text=message, wraplength=300)
         lbl.pack(pady=20, padx=20, expand=True)
         
-        btn = ctk.CTkButton(success_window, text="OK", command=success_window.destroy, width=100)
+        btn = ctk.CTkButton(success_window, text="OK", command=lambda: self._close_modal(success_window), width=100)
         btn.pack(pady=10)
 
 

@@ -51,7 +51,7 @@ echo "Using Python environment: $CMD"
 
 # Build execution according to target platform conventions
 if [[ "$OS_NAME" == "Darwin"* ]]; then
-    $CMD -m PyInstaller --noconsole --windowed \
+    $CMD -m PyInstaller --noconsole --windowed --noupx \
         --name "PDF Parser Light" \
         --icon=icon.icns \
         --add-data "icon.png:." \
@@ -60,7 +60,7 @@ if [[ "$OS_NAME" == "Darwin"* ]]; then
         --collect-all tkinterdnd2 \
         app_launcher.py
 elif [[ "$OS_NAME" == "MINGW"* ]] || [[ "$OS_NAME" == "MSYS"* ]] || [[ "$OS_NAME" == "CYGWIN"* ]]; then
-    $CMD -m PyInstaller --noconsole --onefile \
+    $CMD -m PyInstaller --noconsole --onefile --noupx \
         --name "PDF Parser Light" \
         --icon=icon.ico \
         --add-data "icon.png;." \
@@ -70,7 +70,7 @@ elif [[ "$OS_NAME" == "MINGW"* ]] || [[ "$OS_NAME" == "MSYS"* ]] || [[ "$OS_NAME
         app_launcher.py
 else
     # Linux / Unix
-    $CMD -m PyInstaller --noconsole --onefile \
+    $CMD -m PyInstaller --noconsole --onefile --noupx \
         --name "PDF Parser Light" \
         --icon=icon.png \
         --add-data "icon.png:." \
