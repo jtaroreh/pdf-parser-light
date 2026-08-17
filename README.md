@@ -5,15 +5,13 @@
 # PDF Parser Light
 
 <p align="center">
-  <a href="https://github.com/jtaroreh/pdf-parser-light/releases"><img src="https://img.shields.io/github/v/release/jtaroreh/pdf-parser-light?color=blue" alt="GitHub Release"></a>  
+  <a href="https://github.com/jtaroreh/pdf-parser-light/releases"><img src="https://img.shields.io/github/v/release/jtaroreh/pdf-parser-light?color=blue" alt="GitHub Release"></a>
   <a href="https://pypi.org/project/pdf-parser-light/"><img src="https://img.shields.io/pypi/v/pdf-parser-light.svg" alt="PyPI Package"></a>
-  <a href="https://github.com/jtaroreh/pdf-parser-light/actions"><img src="https://github.com/jtaroreh/pdf-parser-light/actions/workflows/build-and-release.yml/badge.svg" alt="Build Status"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-3776AB.svg?logo=python&logoColor=white" alt="Python 3.9+"></a>
-  <a href="https://aistudio.google.com/"><img src="https://img.shields.io/badge/AI-Google%20Gemini%20API-8E75B2.svg?logo=google&logoColor=white" alt="Powered by Gemini API"></a>
 </p>
 
-A modern, lightweight desktop and command-line application for transcribing PDF files into Markdown/text (incl. LaTeX equations and HTML tables) using the generous free tier of Google Gemini API. Built with Python, CustomTkinter, and automated cross-platform PyInstaller packaging.
+A lightweight desktop and CLI tool that converts PDFs into clean Markdown using the Google Gemini API. Formats math into LaTeX equations and preserves complex tables without requiring a paid subscription or third-party service.
 
 <p align="center">
   <img src="hero.gif" alt="PDF Parser Light Demo" width="400">
@@ -21,210 +19,165 @@ A modern, lightweight desktop and command-line application for transcribing PDF 
 
 ---
 
-## Features
-
-- **High-Fidelity Document Extraction**: Transcribes dense document layouts, preserving formatting, converting equations into LaTeX, and structuring tabular data into HTML or Markdown tables without skipping or summarizing content.
-- **Modern Desktop GUI**: Sleek CustomTkinter interface with asynchronous progress tracking, clipboard copy, and file saving (`.md` / `.txt`).
-- **Stateless CLI & Batch Mode**: Command-line tool supporting single file parsing and batch directory processing with pacing and error handling.
-- **Smart PDF Chunking**: Automatically splits large PDFs (>20 pages) into smaller page chunks to fit within context windows and handle extensive multi-page documents seamlessly.
-- **Daily Quota & Rate Limit Protection**: Tracks daily free tier requests locally (20 free requests/day default for primary Flash models) with automatic fallback to high-capacity Flash Lite models (up to 500 requests/day per model) and exponential backoff retry loops on HTTP 429 rate limits.
-- **Mid-Chunk Recovery**: Recovers partial transcriptions if processing fails mid-way through a large document.
-- **Zero-Cost & Direct API Access**: Connects directly to Gemini API with no middleman SaaS markups, per-page fees, or paid subscription requirements.
-- **Local Key Storage**: Saves Gemini API keys locally in platform-specific configuration directories (`0o600` file permissions on POSIX systems; standard user directory on Windows).
-- **Cross-Platform**: Executables for macOS, Windows, and Linux.
-
----
-
 ## Why PDF Parser Light?
 
-Many commercial document parsers, math OCR tools, and cloud document APIs impose paywalls, subscription models, or per-page processing fees. **PDF Parser Light** provides a powerful, cost-effective alternative by connecting your device directly to Google Gemini's vision models:
+Most PDF extraction tools fall into two categories:
 
-- **Zero API Markup or Subscription Fees**: No third-party SaaS middleman, cloud proxy, or monthly software fees. The app runs completely on your local hardware using your standard API key.
-- **Leverages Free Tier Quotas**: Utilizes Google Gemini's generous free daily tier (ranging from 20 requests/day for primary Flash models up to 500+ requests/day across Flash Lite models), enabling hundreds of document pages to be transcribed daily at **$0 cost**.
-- **Multimodal LLM Power vs. Legacy OCR**: Traditional OCR software struggles with complex math formulas, multi-column tables, and document hierarchy. Gemini's multimodal vision model extracts inline/block LaTeX equations and structured HTML/Markdown tables with high contextual accuracy in a single pass.
+1. **Traditional OCR & PDF libraries** (like Tesseract, PyPDF, or pdfplumber): Fast and local, but often mangle multi-column layouts, tables, and mathematical formulas into broken plain text.
+2. **Commercial OCR / Document AI APIs** (like Mathpix or AWS Textract): High accuracy, but lock you into monthly subscriptions, proprietary dashboards, or per-page billing.
+
+**PDF Parser Light** takes a different approach:
+- **Direct API access**: Calls Gemini's vision models directly using your own API key. No middlemen, no tracking, and no added subscription fees.
+- **Works within Gemini's free tier**: Handles daily document conversion within Google's free quota (20 requests/day on Flash, falling back to Flash Lite for higher volume).
+- **Multimodal extraction**: Gemini understands full page layouts in one shot, converting formulas into clean inline/block LaTeX (`$...$` / `$$...$$`) and multi-column data into Markdown/HTML tables.
+- **Both GUI & CLI**: Use the drag-and-drop desktop app or automate large batches via terminal.
 
 ---
 
-## Downloads & Installation
+## Features
 
-### Option 1: Standalone Pre-built Executables
+- **LaTeX math & table preservation**: Extracts formulas into LaTeX and structured data into Markdown/HTML tables without summarizing.
+- **Desktop GUI & CLI**: CustomTkinter desktop interface with live progress, plus a CLI for batch processing directories.
+- **Automatic page chunking**: Automatically splits documents larger than 20 pages into chunks to prevent timeouts and context overflows.
+- **Quota tracking & model fallback**: Tracks daily free tier usage locally and automatically falls back to Lite models if primary quotas run low.
+- **Resume support**: Resumes processing from partial output files if a job is interrupted mid-way.
+- **Cross-platform**: Pre-built binaries available for macOS, Windows, and Linux.
 
-Pre-built standalone executables can be downloaded from the [Releases](https://github.com/jtaroreh/pdf-parser-light/releases) page.
+---
 
-1. **Select your Operating System:**
-   - **macOS**: Download `pdf-parser-light-macos.zip`, extract it, and move `PDF Parser Light.app` to your `/Applications` folder.
-   - **Windows**: Download `pdf-parser-light-windows.zip`, extract it, and launch `PDF Parser Light.exe`.
-   - **Linux**: Download `pdf-parser-light-linux.tar.gz`, extract it, and run `PDF Parser Light`. *(Note: Minimal distributions may require Tcl/Tk libraries via `sudo apt install python3-tk`)*.
+## Installation
 
-#### Opening Unsigned Binaries (Security Prompts)
+### Option 1: Standalone App (No Python required)
 
-Because standalone releases are built via CI without commercial developer certificates, your OS may present security warnings on first launch:
+Download the pre-built binary for your OS from the [Releases](https://github.com/jtaroreh/pdf-parser-light/releases) page:
+
+- **macOS**: Download `pdf-parser-light-macos.zip`, extract, and move `PDF Parser Light.app` to `/Applications`.
+- **Windows**: Download `pdf-parser-light-windows.zip`, extract, and run `PDF Parser Light.exe`.
+- **Linux**: Download `pdf-parser-light-linux.tar.gz`, extract, and run `PDF Parser Light`. *(Requires Tk: `sudo apt install python3-tk`)*.
+
+#### Opening Unsigned Binaries (First-Time Setup)
+
+Because these builds are open-source releases built via GitHub Actions without commercial developer certificates, your OS will block them by default on first launch:
 
 - **macOS (Gatekeeper)**:
-  - **Option 1 (Finder / System Settings)**: **Control-Click (or Right-Click)** `PDF Parser Light.app`, select **Open**, and click **Open**. On macOS Sequoia (15+), go to **System Settings → Privacy & Security**, scroll down to the Security section, and click **Open Anyway**.
-  - **Option 2 (Terminal Command)**: Strip the download quarantine attribute directly:
+  - **Finder / System Settings**: **Right-click (or Control-click)** `PDF Parser Light.app` in Finder, click **Open**, and confirm **Open**. On macOS Sequoia (15+), if it doesn't open, go to **System Settings → Privacy & Security**, scroll down to the *Security* section, and click **Open Anyway**.
+  - **Terminal**: Alternatively, remove the quarantine attribute directly:
     ```bash
     xattr -d com.apple.quarantine "/Applications/PDF Parser Light.app"
     ```
-- **Windows (SmartScreen)**: Click **More info**, then click **Run anyway**.
+- **Windows (SmartScreen)**:
+  - Click **More info** on the popup, then click **Run anyway**.
 
-### Option 2: Install via PyPI (Python Package)
-
-If you have Python 3.9+ installed, install directly using `pip`:
+---
+### Option 2: Install via pip
 
 ```bash
 pip install pdf-parser-light
 ```
 
-Launch the GUI or CLI directly from your terminal:
+Launch the GUI or CLI:
 ```bash
-pdf-parser-light-gui   # Launches Modern Desktop GUI
-pdf-parser-light       # Launches Command Line Interface
+pdf-parser-light-gui   # Launches Desktop GUI
+pdf-parser-light       # Runs CLI
 ```
+
 ---
 
-## Usage Guide
+## Usage
 
-### Desktop Application (GUI)
+### Desktop Application
 
 <p align="center">
-  <img src="tutorial.gif" alt="PDF Parser Light Setup Tutorial" width="750">
+  <img src="tutorial.gif" alt="PDF Parser Light Tutorial" width="750">
 </p>
 
-1. Launch **PDF Parser Light**.
-2. Enter your **Gemini API Key** from https://aistudio.google.com/api-keys. Check *"Remember API Key"* to save it locally for future sessions.
-3. Drag & drop a PDF file onto the window, or click **Browse** to choose a PDF file.
-4. Click **Process**. The live console log and progress bar will indicate status.
-5. Save the output as Markdown (`.md`) or plain text (`.txt`), or click **Copy to Clipboard**.
+1. Launch the app and enter your [Gemini API Key](https://aistudio.google.com/api-keys) (check *Remember API Key* to save locally).
+2. Drag and drop a PDF file (or click **Browse**).
+3. Click **Process**.
+4. Copy the result or save it directly as `.md` or `.txt`.
 
-### Command Line Interface (CLI)
+### Command Line (CLI)
 
-Install in editable mode or run directly.
+Set your Gemini API key:
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+```
 
-> [!TIP]
-> **Recommended Workflow**: Setting the `GEMINI_API_KEY` environment variable is the standard and recommended workflow for CLI usage. While `--api-key KEY` is available as a CLI flag, passing keys on the command line can expose them in shell command history (`.bash_history` / `.zsh_history`) and process listings (`ps`, Task Manager).
+#### Examples
 
 ```bash
-# Set your Gemini API Key in the environment (Recommended)
-export GEMINI_API_KEY="your_api_key_here"
-
-# Process a single PDF file
-pdf-parser-light /path/to/document.pdf --output ./output.md
+# Convert a single PDF
+pdf-parser-light document.pdf --output output.md
 
 # Batch process an entire directory of PDFs
-pdf-parser-light /path/to/pdf_folder/ --output ./markdown_output/
+pdf-parser-light ./pdf_folder/ --output ./markdown_output/
+
+# Process a specific page range (e.g. pages 1 to 50)
+pdf-parser-light document.pdf --pages 1-50
+
+# Resume an interrupted parsing job
+pdf-parser-light document.pdf --resume
 
 # Check remaining free requests for today
 pdf-parser-light --usage
 
-# Reset local daily free quota tracker
+# Reset local quota counter
 pdf-parser-light --reset-quota
 
-# Force processing ignoring remaining daily quota
-pdf-parser-light /path/to/document.pdf --force
-
-# Process a specific page range
-pdf-parser-light document.pdf --pages 1-50
-
-# Resume parsing from a previous partial output file
-pdf-parser-light document.pdf --resume
-
-# Provide custom transcription instructions
+# Custom transcription prompt
 pdf-parser-light document.pdf --prompt "Transcribe equations only into LaTeX."
 ```
 
-#### CLI Command Options
+#### Options
 
-| Argument | Description |
+| Option | Description |
 | :--- | :--- |
-| `input_path` | Path to a single `.pdf` file or a directory containing PDF files. |
-| `--api-key KEY` | Gemini API Key. Overrides `GEMINI_API_KEY` environment variable. *(Note: Using command-line flags may expose keys in shell history or process listings. Use `GEMINI_API_KEY` env var instead)*. |
-| `--output OUT` | Output directory (for batch mode) or output filename (for single file). |
-| `--prompt PROMPT` | Custom system prompt override. |
-| `--pages PAGES`, `-p` | Page range to process (e.g. `1-50`, `40-120`, or `10`). Default is all pages. |
-| `--resume`, `-r` | Resume parsing from previous partial output file instead of starting over. |
-| `--usage` | Print remaining daily free requests and exit immediately. |
-| `--reset-quota`, `--reset-usage` | Reset local daily free quota tracker to full (0 requests used) and exit immediately. |
-| `--force` | Force processing regardless of remaining daily quota limit. |
+| `input_path` | Path to a `.pdf` file or a directory containing PDFs. |
+| `--output`, `-o` | Output file (single PDF) or output directory (batch mode). |
+| `--pages`, `-p` | Page range to parse (e.g. `1-50`, `40-120`, or `10`). |
+| `--resume`, `-r` | Resume parsing from existing partial output. |
+| `--prompt` | Custom instructions for the model. |
+| `--api-key` | Pass API key explicitly (overrides `GEMINI_API_KEY`). |
+| `--usage` | Print remaining daily free requests and exit. |
+| `--reset-quota` | Reset local request counter to 0. |
+| `--force` | Bypass local quota check and run anyway. |
 
 ---
 
-## Daily Quotas & Rate Limits
+## Daily Quota & Rate Limits
 
-- **Primary Free Tier Quota**: Defaults to tracking 20 free Gemini 3.5 Flash requests/day locally, matching Google's standard free tier limit (configurable via `GEMINI_FREE_LIMIT` environment variable).
-- **High-Capacity Flash Lite Fallbacks**: Google AI Studio provides significantly higher free tier limits for Flash Lite models (`gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`) at up to 500 requests/day per model. Once the 20 primary request limit is reached, the app seamlessly cascades to Flash Lite models.
-- **Quota Warnings**: Both GUI and CLI prompt/warn if a multi-chunk document requires more requests than remain in your primary daily quota, allowing seamless fallback execution.
-- **Model Fallback Chain**: Tries primary Flash models first (`gemini-3.6-flash`, `gemini-3.5-flash`), then cascades to Lite fallbacks (`gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`). High-demand errors (HTTP 503 / UNAVAILABLE / overloaded) switch to the next model immediately.
-- **Automatic Retries**: Retries up to 3 times with exponential backoff on HTTP 429 rate limits or transient failures on the same model before falling back.
+- **Free Tier Limits**: By default, the app tracks 20 free requests/day locally for primary Flash models (configurable via `GEMINI_FREE_LIMIT`).
+- **Model Fallbacks**: When your primary quota runs out, requests cascade to Flash Lite models (`gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`), which offer significantly higher capacity (up to 500 free requests/day per model on Google AI Studio).
+- **Retries**: Automatically retries with exponential backoff on HTTP 429 rate limits or transient errors.
 
 ---
 
 ## Privacy & Security
 
-- **Data Flow**: Selected PDF files are uploaded temporarily to Google Gemini storage using the official `google-genai` SDK for model inference.
-- **Data Sensitivity & Privacy Notice**: Do not upload sensitive, confidential, or copyrighted documents. Content is processed on Google servers in accordance with Google Gemini API terms and retention policies.
-- **Best-Effort Upload Cleanup**: Uploaded files are deleted from Gemini API storage on a best-effort basis after transcription completes or during normal application cleanup. Deletion failures (e.g. network/API interruptions) or unexpected process crashes may leave temporary files stored until standard Google Gemini retention limits expire.
-- **Local Key Storage**: API keys saved via the GUI are stored locally as plain text in user configuration files (`~/Library/Application Support/pdf_parser_light/` on macOS, `%LOCALAPPDATA%\pdf_parser_light\` on Windows, `~/.config/pdf_parser_light/` on Linux) with `0o700` directory and `0o600` file permissions on POSIX systems. On Windows, files are stored within the user profile directory without OS ACL enforcement.
+- **Direct Connections**: All requests and file uploads go directly to Google's Gemini API endpoints using the official `google-genai` SDK. No third-party servers, analytics, or telemetry proxies are involved.
+- **Data Sensitivity Notice**: Do not upload confidential, sensitive, or restricted documents. Files are processed remotely on Google's servers in accordance with Google Gemini API terms.
+- **File Retention & Cleanup**: Files are uploaded temporarily to Gemini API storage for transcription and deleted immediately upon completion. If a process terminates unexpectedly, files remain until Google's temporary storage retention limit expires.
+- **Key Storage**: Saved API keys are stored locally on your machine in standard user configuration directories (`~/Library/Application Support/pdf_parser_light/` on macOS, `%LOCALAPPDATA%\pdf_parser_light\` on Windows, `~/.config/pdf_parser_light/` on Linux).
 
 ---
 
-## Architecture & Workflow
-
-```mermaid
-flowchart TD
-    A["PDF Input (File or Directory)"] --> B{"Input Interface"}
-    B -->|"Desktop App"| C["CustomTkinter GUI"]
-    B -->|"Terminal"| D["Stateless CLI / Batch Options"]
-
-    C & D --> E["PDF Validation & Page Selection"]
-    E --> F{"Page Count > 20?"}
-    F -->|"Yes"| G["Smart Chunking (20 pages / chunk)"]
-    F -->|"No"| H["Single Chunk Processing"]
-
-    G & H --> I["Daily Quota & Rate Limit Check"]
-    I --> J{"Quota Available?"}
-    J -->|"Yes / --force"| K["Upload to Gemini API"]
-    J -->|"Exceeded"| L["Quota Error / Fallback Models"]
-
-    K --> M{"API Response"}
-    M -->|"Success"| N["Extract & Append Transcribed Markdown"]
-    M -->|"Rate Limit / Overloaded"| O["Exponential Backoff & Model Fallback"]
-    O --> K
-
-    N --> P["Best-Effort File Cleanup"]
-    P --> Q["Save Output (.md / .txt) & Support Resuming"]
-```
-
----
-
-## Developer Guide: Building from Source
-
-### Requirements
-- Python 3.9+
-
-### Setup & Testing
+## Development
 
 ```bash
-# Clone repository
 git clone https://github.com/jtaroreh/pdf-parser-light.git
 cd pdf-parser-light
 
-# Setup virtual environment and dependencies
 python3 -m venv venv
 source venv/bin/activate
 pip install -e ".[test]"
 
-# Run complete unit test suite
 pytest -v
 ```
 
-### Building macOS App Bundle
-
-Run the portable PyInstaller build script:
+### Build App Bundle (macOS)
 
 ```bash
-chmod +x build.sh
 ./build.sh
 ```
 
-The output bundle will be located at `dist/PDF Parser Light.app`.
+Output is created in `dist/PDF Parser Light.app`.
