@@ -2,8 +2,6 @@
                   PDF Parser Light - Getting Started
 ===================================================================
 
-Thank you for downloading PDF Parser Light!
-
 
 FIRST-TIME LAUNCH SECURITY NOTES (Unsigned Executables):
 
