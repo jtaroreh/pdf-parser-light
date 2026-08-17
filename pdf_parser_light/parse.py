@@ -9,11 +9,37 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 from . import config
 
-_CHUNK_MODEL_CHAIN = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+SINGLE_FILE_MODEL_CHAIN = [
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+]
+_CHUNK_MODEL_CHAIN = [
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+]
 _FREE_TIER_TRACKED_MODEL = "gemini-3.5-flash"
 
 CHUNK_SIZE = 20
 CHUNK_OVERLAP = 0
+
+DEFAULT_TRANSCRIPTION_PROMPT = (
+    "Transcribe this document into clean, readable markdown as is. Use LaTeX for equations in the main body text.\n"
+    "IMPORTANT: You must transcribe every single page in the document, including references, bibliographies, indexes, and appendices. Do not skip or summarize anything.\n"
+    "Rules for Tables:\n"
+    "1. LaTeX math (like $...$) often fails to render inside table cells. "
+    "Therefore, DO NOT use LaTeX notation ($) inside tables. Instead, use standard Unicode symbols "
+    "directly (e.g., use 'cm²', 'nΩ', 'µΩ·cm²', '°', '·', '10⁻⁴') so they render cleanly as text.\n"
+    "2. ALWAYS output ALL tables using HTML <table> tags (using <tr>, <td>, <th>, and appropriate 'colspan' / 'rowspan' attributes for spanned cells). "
+    "DO NOT use standard markdown table syntax (with pipes `|`). This guarantees that all tables render with perfect alignment and readability.\n"
+    "Rules for Figures/Images:\n"
+    "1. For every figure, diagram, photo, or chart in the PDF, insert an image placeholder at the position it appears in the text "
+    "(e.g., `![Figure X: Caption text](figure_x_placeholder.png)`).\n"
+    "2. Directly below the placeholder, include a detailed visual description in a blockquote (starting with `> **Figure X Visual Description:** `). "
+    "Describe the visual layout, schematics, graphs, axes, labels, data points, or diagrams in detail so the reader understands the exact visual contents of the figure."
+)
 
 def _is_daily_quota_error(err_str):
     """True when an API error indicates daily/free-tier quota exhaustion (not transient RPM)."""
@@ -558,7 +584,7 @@ def _process_single_file(client, file_path, log, usage_callback=None, custom_pro
 
         _check_cancelled(cancel_event)
         left = config.get_remaining_requests()
-        chain = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+        chain = list(SINGLE_FILE_MODEL_CHAIN)
         if left <= 0:
             log(f"Free 3.5-flash daily quota limit reached (0/{config.MAX_FREE_REQUESTS} left). Using fallback models...")
             chain = [m for m in chain if m != _FREE_TIER_TRACKED_MODEL]
@@ -586,25 +612,7 @@ def _process_single_file(client, file_path, log, usage_callback=None, custom_pro
 
 def _generate_transcription(client, pdf_file, log, usage_callback=None, model=None, model_chain=None, custom_prompt=None, cancel_event=None, count_tokens=False):
     _check_cancelled(cancel_event)
-    if custom_prompt:
-        prompt_contents = [pdf_file, custom_prompt]
-    else:
-        prompt_contents = [
-            pdf_file,
-            "Transcribe this document into clean, readable markdown as is. Use LaTeX for equations in the main body text.\n"
-            "IMPORTANT: You must transcribe every single page in the document, including references, bibliographies, indexes, and appendices. Do not skip or summarize anything.\n"
-            "Rules for Tables:\n"
-            "1. LaTeX math (like $...$) often fails to render inside table cells. "
-            "Therefore, DO NOT use LaTeX notation ($) inside tables. Instead, use standard Unicode symbols "
-            "directly (e.g., use 'cm²', 'nΩ', 'µΩ·cm²', '°', '·', '10⁻⁴') so they render cleanly as text.\n"
-            "2. ALWAYS output ALL tables using HTML <table> tags (using <tr>, <td>, <th>, and appropriate 'colspan' / 'rowspan' attributes for spanned cells). "
-            "DO NOT use standard markdown table syntax (with pipes `|`). This guarantees that all tables render with perfect alignment and readability.\n"
-            "Rules for Figures/Images:\n"
-            "1. For every figure, diagram, photo, or chart in the PDF, insert an image placeholder at the position it appears in the text "
-            "(e.g., `![Figure X: Caption text](figure_x_placeholder.png)`).\n"
-            "2. Directly below the placeholder, include a detailed visual description in a blockquote (starting with `> **Figure X Visual Description:** `). "
-            "Describe the visual layout, schematics, graphs, axes, labels, data points, or diagrams in detail so the reader understands the exact visual contents of the figure."
-        ]
+    prompt_contents = [pdf_file, custom_prompt or DEFAULT_TRANSCRIPTION_PROMPT]
 
     if count_tokens:
         try:
@@ -619,7 +627,7 @@ def _generate_transcription(client, pdf_file, log, usage_callback=None, model=No
     elif model_chain:
         chain = list(model_chain)
     else:
-        chain = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+        chain = list(SINGLE_FILE_MODEL_CHAIN)
 
     last_err = None
     for idx, target_model in enumerate(chain):
