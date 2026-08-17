@@ -135,11 +135,7 @@ def _unregister_upload(file_obj):
             _active_uploads.discard(file_obj.name)
 
 def cleanup_active_uploads(client=None, api_key=None):
-    """Best-effort cleanup of registered uploaded files in Gemini storage.
-    
-    Note: Deletion errors are ignored and unexpected process termination cannot trigger cleanup.
-    Files remaining in cloud storage will expire according to Google Gemini API retention limits.
-    """
+    """Clean up active uploaded files from Gemini storage."""
     with _active_uploads_lock:
         names = list(_active_uploads)
         _active_uploads.clear()
