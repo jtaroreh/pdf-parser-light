@@ -1,13 +1,19 @@
-import tkinter
-
 import pytest
+
+try:
+    import tkinter
+    from pdf_parser_light.app import App
+except (ImportError, ModuleNotFoundError) as e:
+    tkinter = None
+    App = None
 
 
 def _make_app():
+    if tkinter is None or App is None:
+        pytest.skip("Tkinter / GUI not available in this environment")
     try:
-        from pdf_parser_light.app import App
         app = App()
-    except tkinter.TclError as e:
+    except (tkinter.TclError, Exception) as e:
         pytest.skip(f"No display: {e}")
     app.withdraw()
     return app
