@@ -8,7 +8,16 @@ from tkinter import filedialog
 
 import customtkinter as ctk
 
-from .parse import parse_pdf
+from .parse import (
+    CancellationError,
+    PartialParseError,
+    QuotaExceededError,
+    cleanup_active_uploads,
+    count_chunk_requests,
+    parse_page_range,
+    parse_pdf,
+    validate_pdf,
+)
 
 # Global lock handle to keep the file lock or mutex alive
 _lock_handle = None
@@ -109,6 +118,15 @@ else:
             self.dnd_enabled = False
 
 
+def _ctk_parts(widget):
+    parts = [widget]
+    for name in ("_canvas", "_label"):
+        inner = getattr(widget, name, None)
+        if inner is not None:
+            parts.append(inner)
+    return parts
+
+
 class App(BaseApp):
     def __init__(self):
         super().__init__()
@@ -168,21 +186,18 @@ class App(BaseApp):
         )
         self.api_key_label.grid(row=0, column=0, sticky="w")
 
-        self.api_key_link = ctk.CTkLabel(
+        self.api_key_link = ctk.CTkButton(
             self.api_header_frame,
             text="(Get free key ↗)",
             font=ctk.CTkFont(size=12, underline=True),
+            fg_color="transparent",
+            hover=False,
             text_color=("#1F6AA5", "#4C9BE8"),
-            cursor="hand2"
+            width=110,
+            height=20,
+            command=self._open_api_keys_page,
         )
         self.api_key_link.grid(row=0, column=1, padx=(8, 0), sticky="w")
-
-        def _open_free_key_url(e=None):
-            self.after(10, lambda: webbrowser.open("https://aistudio.google.com/api-keys"))
-
-        for widget in (self.api_key_link, getattr(self.api_key_link, "_label", None), getattr(self.api_key_link, "_canvas", None)):
-            if widget:
-                widget.bind("<Button-1>", _open_free_key_url)
 
         self.usage_label = ctk.CTkLabel(
             self.api_header_frame,
@@ -295,35 +310,18 @@ class App(BaseApp):
         )
         self.browse_btn.pack()
 
-        # Make entire drop zone card clickable to browse file (ignore direct clicks on browse_btn to prevent double-invocation)
-        def _on_dropzone_click(e=None):
-            if e and hasattr(e, "widget"):
-                w = e.widget
-                if w in (self.browse_btn, getattr(self.browse_btn, "_canvas", None), getattr(self.browse_btn, "_label", None)):
-                    return
-            self.browse_file()
-
-        for widget in (self.drop_frame, self.drop_content_frame, self.drop_title_label, self.drop_sub_label):
-            widget.bind("<Button-1>", _on_dropzone_click)
+        for widget in (self.drop_title_label, self.drop_sub_label):
+            for part in _ctk_parts(widget):
+                part.bind("<Button-1>", lambda e: self.browse_file())
 
         if getattr(self, "dnd_enabled", False):
             try:
-                for widget in (self.drop_frame, self.drop_content_frame, self.drop_title_label, self.drop_sub_label):
-                    targets = []
-                    if hasattr(widget, "drop_target_register"):
-                        targets.append(widget)
-                    if hasattr(widget, "_canvas") and widget._canvas and hasattr(widget._canvas, "drop_target_register"):
-                        targets.append(widget._canvas)
-                    if hasattr(widget, "_label") and widget._label and hasattr(widget._label, "drop_target_register"):
-                        targets.append(widget._label)
-                    for tk_w in targets:
-                        try:
-                            tk_w.drop_target_register(DND_FILES)
-                            tk_w.dnd_bind('<<Drop>>', self._on_file_drop)
-                            tk_w.dnd_bind('<<DragEnter>>', self._on_drag_enter)
-                            tk_w.dnd_bind('<<DragLeave>>', self._on_drag_leave)
-                        except Exception as e:
-                            print(f"DnD widget registration error: {e}", file=sys.stderr)
+                self._register_drop_targets((
+                    self.drop_frame,
+                    self.drop_content_frame,
+                    self.drop_title_label,
+                    self.drop_sub_label,
+                ))
             except Exception as e:
                 print(f"DnD registration warning: {e}", file=sys.stderr)
 
@@ -415,73 +413,23 @@ class App(BaseApp):
         if sys.platform == "darwin":
             self.after(10, self._force_refresh)
 
-        # Handle close window protocol to allow sleep cleanup
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        # Global binding to deselect/unfocus textboxes when clicking anywhere outside of them
-        self.bind_all("<Button-1>", self._on_global_click, add="+")
+    def _open_api_keys_page(self):
+        webbrowser.open("https://aistudio.google.com/api-keys")
 
-    def _on_global_click(self, event=None):
-        if event is None or not hasattr(event, "widget"):
-            return
-        if not self._is_interactive_widget(event.widget):
-            self.after(10, self.deselect_textboxes)
-
-    def _is_interactive_widget(self, widget):
-        current = widget
-        if isinstance(current, str):
-            try:
-                current = self.nametowidget(current)
-            except Exception:
-                return False
-
-        while current is not None:
-            if isinstance(current, (ctk.CTkButton, ctk.CTkCheckBox, ctk.CTkOptionMenu, ctk.CTkEntry, ctk.CTkTextbox, tkinter.Entry, tkinter.Text, tkinter.Button, tkinter.Checkbutton)):
-                return True
-            class_name = current.__class__.__name__
-            if any(k in class_name for k in ("Button", "CheckBox", "OptionMenu", "Entry", "Textbox", "Text", "Menu")):
-                return True
-            try:
-                cursor_val = current.cget("cursor") if hasattr(current, "cget") else None
-                if cursor_val == "hand2":
-                    return True
-            except Exception:
-                pass
-            try:
-                parent_name = current.winfo_parent()
-                if not parent_name:
-                    break
-                current = current.nametowidget(parent_name)
-            except Exception:
-                current = getattr(current, "master", None)
-        return False
-
-    def deselect_textboxes(self):
-        focused = self.focus_get()
-        if focused and self._is_textbox_widget(focused):
-            self.focus_set()
-            def _clear_widget(w):
-                if isinstance(w, (ctk.CTkEntry, tkinter.Entry)):
-                    try:
-                        target = getattr(w, "_entry", w)
-                        if hasattr(target, "selection_clear"):
-                            target.selection_clear()
-                    except Exception:
-                        pass
-                elif isinstance(w, (ctk.CTkTextbox, tkinter.Text)):
-                    try:
-                        target = getattr(w, "_textbox", w)
-                        if hasattr(target, "tag_remove"):
-                            target.tag_remove("sel", "1.0", "end")
-                    except Exception:
-                        pass
-                if hasattr(w, "winfo_children"):
-                    try:
-                        for child in w.winfo_children():
-                            _clear_widget(child)
-                    except Exception:
-                        pass
-            _clear_widget(self)
+    def _register_drop_targets(self, widgets):
+        for widget in widgets:
+            for tk_w in _ctk_parts(widget):
+                if not hasattr(tk_w, "drop_target_register"):
+                    continue
+                try:
+                    tk_w.drop_target_register(DND_FILES)
+                    tk_w.dnd_bind("<<Drop>>", self._on_file_drop)
+                    tk_w.dnd_bind("<<DragEnter>>", self._on_drag_enter)
+                    tk_w.dnd_bind("<<DragLeave>>", self._on_drag_leave)
+                except Exception as e:
+                    print(f"DnD widget registration error: {e}", file=sys.stderr)
 
     def _force_refresh(self):
         try:
@@ -544,7 +492,6 @@ class App(BaseApp):
         if getattr(self, "cancel_event", None) is not None:
             self.cancel_event.set()
         try:
-            from .parse import cleanup_active_uploads
             api_key = self.api_key_entry.get().strip() if hasattr(self, "api_key_entry") else None
             cleanup_active_uploads(api_key=api_key)
         except Exception:
@@ -604,13 +551,11 @@ class App(BaseApp):
             self.set_selected_file(paths[0].strip("{}'\" "))
 
     def browse_file(self, event=None):
-        def _do_browse():
-            file_path = filedialog.askopenfilename(
-                filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
-            )
-            if file_path:
-                self.set_selected_file(file_path)
-        self.after(10, _do_browse)
+        file_path = filedialog.askopenfilename(
+            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
+        )
+        if file_path:
+            self.set_selected_file(file_path)
 
     def set_selected_file(self, file_path):
         if not file_path or not os.path.exists(file_path):
@@ -621,7 +566,6 @@ class App(BaseApp):
             self.show_error("Please select a valid PDF file (.pdf).")
             return
 
-        from .parse import validate_pdf
         try:
             total_pages = validate_pdf(file_path)
         except Exception as e:
@@ -703,7 +647,6 @@ class App(BaseApp):
 
         total_pages = getattr(self, "total_pages", None)
         if total_pages is None:
-            from .parse import validate_pdf
             try:
                 total_pages = validate_pdf(file_path)
                 self.total_pages = total_pages
@@ -712,17 +655,15 @@ class App(BaseApp):
                 return
 
         page_range = self.page_range_entry.get().strip() or None
-        from .parse import _parse_page_range
         try:
-            s_idx, e_idx = _parse_page_range(page_range, total_pages)
+            s_idx, e_idx = parse_page_range(page_range, total_pages)
             target_count = e_idx - s_idx
         except Exception as pre:
             self.show_error(f"Invalid Page Range:\n\n{pre}")
             return
 
-        from .parse import _count_chunk_requests
         left = config.get_remaining_requests()
-        total_chunks = _count_chunk_requests(target_count) if target_count > 0 else 1
+        total_chunks = count_chunk_requests(target_count) if target_count > 0 else 1
 
         ignore_quota = False
         if total_chunks > left:
@@ -785,13 +726,13 @@ class App(BaseApp):
         self.after(100, self.check_queue)
 
     def process_pdf_thread(self, api_key, file_path, save_key_checked, ignore_quota=False, page_range=None, resume=False, output_path=None):
-        from .parse import PartialParseError, CancellationError, QuotaExceededError
         try:
             result = parse_pdf(
                 api_key, 
                 file_path, 
                 log_callback=lambda msg: self.queue.put(("stdout", msg)),
                 usage_callback=lambda: self.queue.put(("usage_increment", None)),
+                progress_callback=lambda current, total: self.queue.put(("progress", (current, total))),
                 ignore_quota=ignore_quota,
                 cancel_event=self.cancel_event,
                 page_range=page_range,
@@ -814,6 +755,23 @@ class App(BaseApp):
             log_path = get_log_path()
             self.queue.put(("error", f"Processing failed: {e}\n\nLog file:\n{log_path}"))
 
+    def _set_idle_controls(self):
+        self.process_btn.configure(state="normal")
+        self.cancel_btn.configure(state="disabled")
+        self.browse_btn.configure(state="normal")
+        self.save_key_checkbox.configure(state="normal")
+        self.page_range_entry.configure(state="normal")
+        self.allow_sleep()
+        self.update_usage_label()
+
+    def _set_progress(self, fraction, color=None):
+        self.progress_bar.stop()
+        kwargs = {"mode": "determinate"}
+        if color is not None:
+            kwargs["progress_color"] = color
+        self.progress_bar.configure(**kwargs)
+        self.progress_bar.set(fraction)
+
     def check_queue(self):
         reschedule = True
         try:
@@ -822,106 +780,69 @@ class App(BaseApp):
                     msg_type, data = self.queue.get_nowait()
                 except queue.Empty:
                     break
-                
+
                 try:
                     if msg_type == "stdout":
                         self.log_message(data)
-                        if "--- CHUNK_PROGRESS:" in data:
-                            try:
-                                parts = data.split("--- CHUNK_PROGRESS:")[1].split("---")[0].strip().split("/")
-                                current = int(parts[0])
-                                total = int(parts[1])
-                                self.progress_bar.stop()
-                                self.progress_bar.configure(mode="determinate")
-                                self.progress_bar.set(current / total)
-                            except Exception:
-                                pass
                     elif msg_type == "usage_increment":
                         self.update_usage_label()
+                    elif msg_type == "progress":
+                        current, total = data
+                        self._set_progress(current / total)
                     else:
-                        self.process_btn.configure(state="normal")
-                        self.cancel_btn.configure(state="disabled")
-                        self.browse_btn.configure(state="normal")
-                        self.save_key_checkbox.configure(state="normal")
-                        self.page_range_entry.configure(state="normal")
-                        self.allow_sleep()
-                        self.update_usage_label()
+                        self._set_idle_controls()
                         reschedule = False
-                        
                         if msg_type == "success":
                             self.markdown_result = data
                             self.save_btn.configure(state="normal")
                             self.copy_btn.configure(state="normal")
-                            
-                            self.progress_bar.stop()
-                            self.progress_bar.configure(mode="determinate", progress_color="green")
-                            self.progress_bar.set(1.0)
-                            
+                            self._set_progress(1.0, "green")
                             self.show_success("PDF successfully processed! You can now save the file or copy the content.")
                         elif msg_type == "partial_success":
                             self.markdown_result = data
                             self.save_btn.configure(state="normal")
                             self.copy_btn.configure(state="normal")
-                            
-                            self.progress_bar.stop()
-                            self.progress_bar.configure(mode="determinate", progress_color="orange")
-                            self.progress_bar.set(1.0)
-                            
+                            self._set_progress(1.0, "orange")
                             self.show_error("Processing failed mid-way, but partial markdown content was recovered and can be saved below.")
                         elif msg_type == "cancelled":
-                            self.progress_bar.stop()
-                            self.progress_bar.configure(mode="determinate", progress_color="gray")
-                            self.progress_bar.set(0)
+                            self._set_progress(0, "gray")
                             self.log_message("Processing cancelled by user.\n")
                         elif msg_type == "error":
-                            self.progress_bar.stop()
-                            self.progress_bar.configure(mode="determinate", progress_color="red")
-                            self.progress_bar.set(1.0)
-                            
+                            self._set_progress(1.0, "red")
                             self.show_error(f"An error occurred during processing:\n\n{data}")
                 except Exception as e:
                     print(f"Error handling queue message: {e}", file=sys.stderr)
-                    self.process_btn.configure(state="normal")
-                    self.cancel_btn.configure(state="disabled")
-                    self.browse_btn.configure(state="normal")
-                    self.save_key_checkbox.configure(state="normal")
-                    self.page_range_entry.configure(state="normal")
-                    self.allow_sleep()
+                    self._set_idle_controls()
                     reschedule = False
         finally:
             if reschedule:
                 self.after(100, self.check_queue)
 
-
     def save_file(self):
         if not self.markdown_result:
             return
-            
-        def _do_save():
-            selected_ext = self.format_var.get()
-            
-            if selected_ext == ".md":
-                file_types = [("Markdown files", "*.md"), ("All files", "*.*")]
-            else:
-                file_types = [("Text files", "*.txt"), ("All files", "*.*")]
 
-            save_path = filedialog.asksaveasfilename(
-                defaultextension=selected_ext,
-                filetypes=file_types
-            )
-            
-            if save_path:
-                if not os.path.splitext(save_path)[1]:
-                    save_path += selected_ext
+        selected_ext = self.format_var.get()
+        if selected_ext == ".md":
+            file_types = [("Markdown files", "*.md"), ("All files", "*.*")]
+        else:
+            file_types = [("Text files", "*.txt"), ("All files", "*.*")]
 
-                try:
-                    with open(save_path, "w", encoding="utf-8") as f:
-                        f.write(self.markdown_result)
-                    self.show_success(f"File successfully saved to:\n{save_path}")
-                except Exception as e:
-                    traceback.print_exc()
-                    self.show_error("Failed to save file. Please check the log for details.")
-        self.after(10, _do_save)
+        save_path = filedialog.asksaveasfilename(
+            defaultextension=selected_ext,
+            filetypes=file_types
+        )
+
+        if save_path:
+            if not os.path.splitext(save_path)[1]:
+                save_path += selected_ext
+            try:
+                with open(save_path, "w", encoding="utf-8") as f:
+                    f.write(self.markdown_result)
+                self.show_success(f"File successfully saved to:\n{save_path}")
+            except Exception:
+                traceback.print_exc()
+                self.show_error("Failed to save file. Please check the log for details.")
 
     def copy_to_clipboard(self):
         if not self.markdown_result:
@@ -946,33 +867,28 @@ class App(BaseApp):
         except Exception:
             pass
 
+    def _show_modal(self, title, message, geometry, as_text=False):
+        win = ctk.CTkToplevel(self)
+        win.title(title)
+        win.geometry(geometry)
+        win.attributes("-topmost", True)
+        win.grab_set()
+        if as_text:
+            textbox = ctk.CTkTextbox(win, wrap="word")
+            textbox.pack(pady=(20, 10), padx=20, fill="both", expand=True)
+            textbox.insert("1.0", message)
+            textbox.configure(state="disabled")
+        else:
+            lbl = ctk.CTkLabel(win, text=message, wraplength=300)
+            lbl.pack(pady=20, padx=20, expand=True)
+        btn = ctk.CTkButton(win, text="OK", command=lambda: self._close_modal(win), width=100)
+        btn.pack(pady=(0, 15) if as_text else 10)
+
     def show_error(self, message):
-        error_window = ctk.CTkToplevel(self)
-        error_window.title("Error")
-        error_window.geometry("480x280")
-        error_window.attributes("-topmost", True)
-        error_window.grab_set()
-        
-        textbox = ctk.CTkTextbox(error_window, wrap="word")
-        textbox.pack(pady=(20, 10), padx=20, fill="both", expand=True)
-        textbox.insert("1.0", message)
-        textbox.configure(state="disabled")
-        
-        btn = ctk.CTkButton(error_window, text="OK", command=lambda: self._close_modal(error_window), width=100)
-        btn.pack(pady=(0, 15))
+        self._show_modal("Error", message, "480x280", as_text=True)
 
     def show_success(self, message):
-        success_window = ctk.CTkToplevel(self)
-        success_window.title("Success")
-        success_window.geometry("350x150")
-        success_window.attributes("-topmost", True)
-        success_window.grab_set()
-        
-        lbl = ctk.CTkLabel(success_window, text=message, wraplength=300)
-        lbl.pack(pady=20, padx=20, expand=True)
-        
-        btn = ctk.CTkButton(success_window, text="OK", command=lambda: self._close_modal(success_window), width=100)
-        btn.pack(pady=10)
+        self._show_modal("Success", message, "350x150")
 
 
 def _acquire_instance_lock():
