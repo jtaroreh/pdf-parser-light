@@ -55,14 +55,14 @@ def _is_daily_quota_error(err_str):
         or ("quotaid" in err and "day" in err)
     )
 
-def _build_chunk_model_chain(remaining_free=None):
-    """Model chain for multi-chunk runs; skip free-tier tracked model when local remaining is 0."""
-    chain = list(_CHUNK_MODEL_CHAIN)
+def _without_tracked_free_model(chain, remaining_free=None):
+    chain = list(chain)
     if remaining_free is not None and remaining_free <= 0:
-        chain = [m for m in chain if m != _FREE_TIER_TRACKED_MODEL]
+        return [m for m in chain if m != _FREE_TIER_TRACKED_MODEL]
     return chain
 
-
+def _build_chunk_model_chain(remaining_free=None):
+    return _without_tracked_free_model(_CHUNK_MODEL_CHAIN, remaining_free)
 
 def _build_chunk_groups(page_indices, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     """Split page indices into overlapping groups (overlap helps continuity across chunk boundaries)."""
@@ -82,7 +82,7 @@ def _build_chunk_groups(page_indices, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERL
         start += stride
     return groups
 
-def _count_chunk_requests(page_count, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+def count_chunk_requests(page_count, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     if page_count <= 0:
         return 0
     if page_count <= chunk_size:
@@ -233,7 +233,7 @@ def _cleanup_pending_future(pending_f, client):
     except Exception:
         pass
 
-def _parse_page_range(page_range_str, total_pages):
+def parse_page_range(page_range_str, total_pages):
     """
     Parses a page range string like '40-120', '10-', '-50', or '5' into zero-based (start_idx, end_idx) range (end_idx exclusive).
     Returns (start_idx, end_idx).
@@ -300,6 +300,16 @@ def _read_completed_chunks_from_file(output_path):
         return valid_chunks
     except Exception:
         return []
+
+def _load_resumed_chunks(resume, output_path, total_chunks, log):
+    if not resume or not output_path or not os.path.exists(output_path):
+        return [], 0
+    previous_chunks = _read_completed_chunks_from_file(output_path)
+    if not previous_chunks:
+        return [], 0
+    completed_count = min(len(previous_chunks), total_chunks)
+    log(f"Resuming from partial output: {completed_count}/{total_chunks} chunks already completed.")
+    return previous_chunks[:completed_count], completed_count
 
 def validate_pdf(file_path, max_size_mb=200, max_pages=500):
     if not file_path or not os.path.exists(file_path):
@@ -372,7 +382,8 @@ def parse_pdf(
     api_key, 
     file_path, 
     log_callback=None, 
-    usage_callback=None, 
+    usage_callback=None,
+    progress_callback=None,
     custom_prompt=None, 
     ignore_quota=False, 
     cancel_event=None,
@@ -407,7 +418,7 @@ def parse_pdf(
         return _process_single_file(client, file_path, log, usage_callback, custom_prompt, cancel_event=cancel_event)
 
     # Resolve active page range
-    start_page_idx, end_page_idx = _parse_page_range(page_range, total_pages)
+    start_page_idx, end_page_idx = parse_page_range(page_range, total_pages)
     target_page_indices = list(range(start_page_idx, end_page_idx))
     target_page_count = len(target_page_indices)
 
@@ -452,17 +463,7 @@ def parse_pdf(
             f"Local free-tier quota for {_FREE_TIER_TRACKED_MODEL} is 0/{config.MAX_FREE_REQUESTS}; "
             f"skipping it and starting with {active_model_chain[0]}."
         )
-    results = []
-    start_chunk_idx = 0
-
-    # Auto-resume support check (automatically detects existing partial progress)
-    if output_path and os.path.exists(output_path):
-        previous_chunks = _read_completed_chunks_from_file(output_path)
-        if previous_chunks:
-            completed_count = min(len(previous_chunks), total_chunks)
-            results = previous_chunks[:completed_count]
-            start_chunk_idx = completed_count
-            log(f"Auto-resuming from partial output: {start_chunk_idx}/{total_chunks} chunks already completed.")
+    results, start_chunk_idx = _load_resumed_chunks(resume, output_path, total_chunks, log)
 
     if start_chunk_idx >= total_chunks:
         log("All requested chunks have already been processed according to partial output.")
@@ -520,7 +521,8 @@ def parse_pdf(
                         log(f"Active chunking model updated to: {used_model}")
 
                 log(f"Successfully processed chunk {chunk_num}/{total_chunks} using {used_model}.")
-                log(f"--- CHUNK_PROGRESS: {chunk_num}/{total_chunks} ---")
+                if progress_callback:
+                    progress_callback(chunk_num, total_chunks)
             except Exception as e:
                 log(f"Failed to process chunk {chunk_num}/{total_chunks}: {e}")
                 # Cancel pending next upload if present
@@ -584,10 +586,9 @@ def _process_single_file(client, file_path, log, usage_callback=None, custom_pro
 
         _check_cancelled(cancel_event)
         left = config.get_remaining_requests()
-        chain = list(SINGLE_FILE_MODEL_CHAIN)
+        chain = _without_tracked_free_model(SINGLE_FILE_MODEL_CHAIN, left)
         if left <= 0:
             log(f"Free 3.5-flash daily quota limit reached (0/{config.MAX_FREE_REQUESTS} left). Using fallback models...")
-            chain = [m for m in chain if m != _FREE_TIER_TRACKED_MODEL]
 
         res_text, _ = _generate_transcription(
             client, 
@@ -616,7 +617,7 @@ def _generate_transcription(client, pdf_file, log, usage_callback=None, model=No
 
     if count_tokens:
         try:
-            token_info = client.models.count_tokens(model="gemini-3.5-flash", contents=prompt_contents)
+            token_info = client.models.count_tokens(model=_FREE_TIER_TRACKED_MODEL, contents=prompt_contents)
             log(f"Token count for payload: {token_info.total_tokens}")
         except Exception as e:
             log(f"Warning: Could not count tokens: {e}")
@@ -644,7 +645,7 @@ def _generate_transcription(client, pdf_file, log, usage_callback=None, model=No
                 if not response or not getattr(response, "text", None):
                     raise ValueError(f"Empty or blocked response returned by {target_model}.")
                 
-                if target_model == "gemini-3.5-flash":
+                if target_model == _FREE_TIER_TRACKED_MODEL:
                     config.increment_usage()
                     if usage_callback:
                         usage_callback()
@@ -661,7 +662,7 @@ def _generate_transcription(client, pdf_file, log, usage_callback=None, model=No
                 )
                 is_daily = is_429 and _is_daily_quota_error(err_str)
                 
-                if is_daily and target_model == "gemini-3.5-flash":
+                if is_daily and target_model == _FREE_TIER_TRACKED_MODEL:
                     current = config.get_usage()
                     if current < config.MAX_FREE_REQUESTS:
                         config.increment_usage(config.MAX_FREE_REQUESTS - current)

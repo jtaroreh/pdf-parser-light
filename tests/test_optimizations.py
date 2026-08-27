@@ -2,18 +2,21 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from pdf_parser_light.parse import (
-    _parse_page_range,
+    parse_page_range,
+    count_chunk_requests,
     _calculate_backoff,
     _read_completed_chunks_from_file,
+    _load_resumed_chunks,
     _generate_transcription,
     _build_chunk_groups,
-    _count_chunk_requests,
     _strip_overlapping_page,
     _strip_first_page_section,
     _stitch_chunk_results,
     _is_daily_quota_error,
     _build_chunk_model_chain,
+    _without_tracked_free_model,
     _FREE_TIER_TRACKED_MODEL,
+    SINGLE_FILE_MODEL_CHAIN,
     _process_single_file
 )
 from pdf_parser_light.cli import main
@@ -24,7 +27,7 @@ def test_build_chunk_groups_with_overlap():
     assert groups[1][0] == 19  # 1-page overlap
     assert groups[1][-1] == 38
     assert groups[-1][-1] == 44
-    assert _count_chunk_requests(120, chunk_size=20, overlap=1) == len(
+    assert count_chunk_requests(120, chunk_size=20, overlap=1) == len(
         _build_chunk_groups(list(range(120)), chunk_size=20, overlap=1)
     )
 
@@ -92,6 +95,21 @@ def test_build_chunk_model_chain_skips_when_remaining_zero():
     chain = _build_chunk_model_chain(0)
     assert _FREE_TIER_TRACKED_MODEL not in chain
     assert chain[0] == "gemini-3.5-flash-lite"
+    filtered = _without_tracked_free_model(SINGLE_FILE_MODEL_CHAIN, 0)
+    assert _FREE_TIER_TRACKED_MODEL not in filtered
+    assert _without_tracked_free_model(SINGLE_FILE_MODEL_CHAIN, 5) == list(SINGLE_FILE_MODEL_CHAIN)
+
+def test_load_resumed_chunks(tmp_path):
+    out_file = tmp_path / "partial.md"
+    out_file.write_text("chunk-a\n\n---\n\nchunk-b", encoding="utf-8")
+    logs = []
+    empty, idx = _load_resumed_chunks(False, str(out_file), 4, logs.append)
+    assert empty == []
+    assert idx == 0
+    chunks, idx = _load_resumed_chunks(True, str(out_file), 4, logs.append)
+    assert idx == 2
+    assert chunks == ["chunk-a", "chunk-b"]
+    assert any("Resuming from partial output" in msg for msg in logs)
 
 
 def test_is_daily_quota_error_patterns():
@@ -108,27 +126,27 @@ def test_is_daily_quota_error_patterns():
 
 
 def test_parse_page_range_defaults():
-    assert _parse_page_range(None, 100) == (0, 100)
-    assert _parse_page_range("", 100) == (0, 100)
-    assert _parse_page_range("   ", 100) == (0, 100)
+    assert parse_page_range(None, 100) == (0, 100)
+    assert parse_page_range("", 100) == (0, 100)
+    assert parse_page_range("   ", 100) == (0, 100)
 
 def test_parse_page_range_valid_ranges():
-    assert _parse_page_range("40-120", 200) == (39, 120)
-    assert _parse_page_range("1-50", 100) == (0, 50)
-    assert _parse_page_range("5", 100) == (4, 5)
-    assert _parse_page_range("10-", 50) == (9, 50)
-    assert _parse_page_range("-30", 50) == (0, 30)
+    assert parse_page_range("40-120", 200) == (39, 120)
+    assert parse_page_range("1-50", 100) == (0, 50)
+    assert parse_page_range("5", 100) == (4, 5)
+    assert parse_page_range("10-", 50) == (9, 50)
+    assert parse_page_range("-30", 50) == (0, 30)
 
 def test_parse_page_range_clamping():
-    assert _parse_page_range("1-500", 50) == (0, 50)
-    assert _parse_page_range("0-10", 50) == (0, 10)
+    assert parse_page_range("1-500", 50) == (0, 50)
+    assert parse_page_range("0-10", 50) == (0, 10)
 
 def test_parse_page_range_invalid():
     with pytest.raises(ValueError, match="cannot be greater than end page"):
-        _parse_page_range("50-10", 100)
+        parse_page_range("50-10", 100)
 
     with pytest.raises(ValueError, match="Invalid page range format"):
-        _parse_page_range("abc", 100)
+        parse_page_range("abc", 100)
 
 def test_calculate_backoff():
     delay1 = _calculate_backoff(0, is_429=False)
@@ -345,11 +363,8 @@ def test_single_file_fallback_when_quota_zero(monkeypatch):
 
 def test_acquire_instance_lock_returns_none_on_os_error(monkeypatch):
     """Verify _acquire_instance_lock returns None when fcntl.flock raises OSError."""
-    try:
-        import sys
-        from pdf_parser_light.app import _acquire_instance_lock
-    except Exception as e:
-        pytest.skip(f"Skipping GUI test in headless environment: {e}")
+    import sys
+    from pdf_parser_light.app import _acquire_instance_lock
     mock_fcntl = MagicMock()
     mock_fcntl.flock.side_effect = OSError("Already locked")
     monkeypatch.setitem(sys.modules, "fcntl", mock_fcntl)
