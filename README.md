@@ -91,7 +91,7 @@ pdf-parser-light       # Runs CLI
   <img src="tutorial.gif" alt="PDF Parser Light Tutorial" width="750">
 </p>
 
-1. Launch the app and enter your [Gemini API Key](https://aistudio.google.com/api-keys) (check *Remember API Key* to save locally).
+1. Launch the app and enter your Gemini API Key ([https://aistudio.google.com/api-keys]) (check *Remember API Key* to save locally).
 2. Drag and drop a PDF file (or click **Browse**).
 3. Click **Process**.
 4. Copy the result or save it directly as `.md` or `.txt`.
