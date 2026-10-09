@@ -186,12 +186,12 @@ def test_skip_count_tokens():
         client=mock_client,
         pdf_file=mock_pdf,
         log=lambda msg: log_msgs.append(msg),
-        model="gemini-3.5-flash",
+        model="gemini-3-flash-preview",
         count_tokens=False
     )
 
     assert text == "Transcribed text"
-    assert used_m == "gemini-3.5-flash"
+    assert used_m == "gemini-3-flash-preview"
     mock_client.models.count_tokens.assert_not_called()
     mock_client.models.generate_content.assert_called_once()
 
@@ -221,17 +221,17 @@ def test_model_fallback_chain():
             client=mock_client,
             pdf_file=mock_pdf,
             log=lambda msg: log_msgs.append(msg),
-            model_chain=["gemini-3.6-flash", "gemini-3.5-flash"],
+            model_chain=["gemini-3.7-flash", "gemini-3-flash-preview"],
             count_tokens=False,
         )
 
     assert text == "Fallback success text"
-    assert used_m == "gemini-3.5-flash"
-    assert any("Automatically switching to fallback model: gemini-3.5-flash" in m for m in log_msgs)
+    assert used_m == "gemini-3-flash-preview"
+    assert any("Automatically switching to fallback model: gemini-3-flash-preview" in m for m in log_msgs)
     mock_sleep.assert_not_called()
     assert mock_client.models.generate_content.call_count == 2
-    assert mock_client.models.generate_content.call_args_list[0].kwargs["model"] == "gemini-3.6-flash"
-    assert mock_client.models.generate_content.call_args_list[1].kwargs["model"] == "gemini-3.5-flash"
+    assert mock_client.models.generate_content.call_args_list[0].kwargs["model"] == "gemini-3.7-flash"
+    assert mock_client.models.generate_content.call_args_list[1].kwargs["model"] == "gemini-3-flash-preview"
 
 
 def test_model_fallback_after_429_retries():
@@ -254,22 +254,22 @@ def test_model_fallback_after_429_retries():
             client=mock_client,
             pdf_file=mock_pdf,
             log=lambda msg: log_msgs.append(msg),
-            model_chain=["gemini-3.6-flash", "gemini-3.5-flash"],
+            model_chain=["gemini-3.7-flash", "gemini-3-flash-preview"],
             count_tokens=False,
         )
 
     assert text == "Fallback after retries"
-    assert used_m == "gemini-3.5-flash"
+    assert used_m == "gemini-3-flash-preview"
     assert mock_sleep.call_count == 2
     assert any("Rate limit hit (429)" in m for m in log_msgs)
-    assert any("Automatically switching to fallback model: gemini-3.5-flash" in m for m in log_msgs)
+    assert any("Automatically switching to fallback model: gemini-3-flash-preview" in m for m in log_msgs)
     assert mock_client.models.generate_content.call_count == 4
     models_called = [c.kwargs["model"] for c in mock_client.models.generate_content.call_args_list]
     assert models_called == [
-        "gemini-3.6-flash",
-        "gemini-3.6-flash",
-        "gemini-3.6-flash",
-        "gemini-3.5-flash",
+        "gemini-3.7-flash",
+        "gemini-3.7-flash",
+        "gemini-3.7-flash",
+        "gemini-3-flash-preview",
     ]
 
 
@@ -296,7 +296,7 @@ def test_daily_quota_falls_back_immediately_without_sleep():
                         client=mock_client,
                         pdf_file=mock_pdf,
                         log=lambda msg: log_msgs.append(msg),
-                        model_chain=["gemini-3.5-flash", "gemini-3.1-flash-lite"],
+                        model_chain=["gemini-3-flash-preview", "gemini-3.1-flash-lite"],
                         count_tokens=False,
                     )
 
@@ -306,7 +306,7 @@ def test_daily_quota_falls_back_immediately_without_sleep():
     assert mock_client.models.generate_content.call_count == 2
     assert any("daily/free-tier quota exhausted" in m for m in log_msgs)
     models_called = [c.kwargs["model"] for c in mock_client.models.generate_content.call_args_list]
-    assert models_called == ["gemini-3.5-flash", "gemini-3.1-flash-lite"]
+    assert models_called == ["gemini-3-flash-preview", "gemini-3.1-flash-lite"]
 
 
 def test_model_fallback_chain_exhausted():
@@ -322,23 +322,23 @@ def test_model_fallback_chain_exhausted():
                 client=mock_client,
                 pdf_file=mock_pdf,
                 log=lambda msg: log_msgs.append(msg),
-                model_chain=["gemini-3.6-flash", "gemini-3.5-flash"],
+                model_chain=["gemini-3.7-flash", "gemini-3-flash-preview"],
                 count_tokens=False,
             )
 
-    assert any("Automatically switching to fallback model: gemini-3.5-flash" in m for m in log_msgs)
+    assert any("Automatically switching to fallback model: gemini-3-flash-preview" in m for m in log_msgs)
     assert mock_client.models.generate_content.call_count == 4
     models_called = [c.kwargs["model"] for c in mock_client.models.generate_content.call_args_list]
     assert models_called == [
-        "gemini-3.6-flash",
-        "gemini-3.5-flash",
-        "gemini-3.5-flash",
-        "gemini-3.5-flash",
+        "gemini-3.7-flash",
+        "gemini-3-flash-preview",
+        "gemini-3-flash-preview",
+        "gemini-3-flash-preview",
     ]
 
 
 def test_single_file_fallback_when_quota_zero(monkeypatch):
-    """When remaining quota is 0, _process_single_file filters out gemini-3.5-flash and logs fallback warning."""
+    """When remaining quota is 0, _process_single_file filters out gemini-3-flash-preview and logs fallback warning."""
     mock_client = MagicMock()
     uploaded = MagicMock()
     uploaded.name = "files/uploaded_pdf"
@@ -358,7 +358,7 @@ def test_single_file_fallback_when_quota_zero(monkeypatch):
         )
         assert res == "Parsed content"
         passed_chain = mock_gen.call_args.kwargs["model_chain"]
-        assert "gemini-3.5-flash" not in passed_chain
+        assert "gemini-3-flash-preview" not in passed_chain
         assert any("Using fallback models" in msg for msg in log_msgs)
 
 def test_acquire_instance_lock_returns_none_on_os_error(monkeypatch):
@@ -400,5 +400,24 @@ def test_cli_reset_quota_arg(capsys):
     assert "Daily free quota tracker reset!" in captured.out
 
 
+def test_thinking_level_low_on_gemini_3_7():
+    """Gemini 3.7 models must pass thinking_level='LOW', while non-3.7 models do not."""
+    mock_client = MagicMock()
+    mock_pdf = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = "Success"
+    mock_client.models.generate_content.return_value = mock_response
 
+    _generate_transcription(
+        client=mock_client,
+        pdf_file=mock_pdf,
+        log=lambda msg: None,
+        model_chain=["gemini-3.7-flash"],
+        count_tokens=False,
+    )
 
+    first_call_kwargs = mock_client.models.generate_content.call_args.kwargs
+    assert first_call_kwargs["model"] == "gemini-3.7-flash"
+    assert "config" in first_call_kwargs
+    config_obj = first_call_kwargs["config"]
+    assert str(config_obj.thinking_config.thinking_level).upper() in ("LOW", "THINKINGLEVEL.LOW")

@@ -30,12 +30,12 @@ def test_usage_label_fallback_text(monkeypatch):
 
     monkeypatch.setattr("pdf_parser_light.config.get_remaining_requests", lambda: 15)
     app.update_usage_label()
-    assert "Free 3.5 Quota Left: 15" in app.usage_label.cget("text")
+    assert "Free 3-Flash Quota Left: 15" in app.usage_label.cget("text")
     assert "Fallback Models" not in app.usage_label.cget("text")
 
     monkeypatch.setattr("pdf_parser_light.config.get_remaining_requests", lambda: 0)
     app.update_usage_label()
-    assert "Free 3.5 Quota Left: 0 / 20 (Using Fallback Models)" in app.usage_label.cget("text")
+    assert "Free 3-Flash Quota Left: 0 / 20 (Using Fallback Models)" in app.usage_label.cget("text")
     color = app.usage_label.cget("text_color")
     assert "#E67E22" in (color if isinstance(color, (list, tuple)) else [color])
 

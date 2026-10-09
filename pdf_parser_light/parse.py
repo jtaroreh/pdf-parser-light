@@ -1,4 +1,5 @@
 from google import genai
+from google.genai import types
 import os
 import re
 import threading
@@ -10,17 +11,17 @@ from concurrent.futures import ThreadPoolExecutor
 from . import config
 
 SINGLE_FILE_MODEL_CHAIN = [
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
+    "gemini-3.7-flash",
+    "gemini-3-flash-preview",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
 ]
 _CHUNK_MODEL_CHAIN = [
-    "gemini-3.5-flash",
+    "gemini-3-flash-preview",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
 ]
-_FREE_TIER_TRACKED_MODEL = "gemini-3.5-flash"
+_FREE_TIER_TRACKED_MODEL = "gemini-3-flash-preview"
 
 CHUNK_SIZE = 20
 CHUNK_OVERLAP = 0
@@ -444,11 +445,11 @@ def parse_pdf(
         target_page_indices, chunk_size=effective_chunk_size, overlap=CHUNK_OVERLAP
     )
     total_chunks = len(chunk_groups)
-    model_hint = "lite-model" if left <= 0 else "3.5-Flash"
+    model_hint = "lite-model" if left <= 0 else "3-Flash"
     log(
         f"PDF selection has {target_page_count} pages. Splitting into {total_chunks} chunks "
         f"({effective_chunk_size} pages, {CHUNK_OVERLAP}-page overlap; requires ~{total_chunks} "
-        f"{model_hint} requests; {left}/{config.MAX_FREE_REQUESTS} left in free 3.5-flash daily quota)..."
+        f"{model_hint} requests; {left}/{config.MAX_FREE_REQUESTS} left in free 3-flash daily quota)..."
     )
     
     if not ignore_quota and total_chunks > left:
@@ -588,7 +589,7 @@ def _process_single_file(client, file_path, log, usage_callback=None, custom_pro
         left = config.get_remaining_requests()
         chain = _without_tracked_free_model(SINGLE_FILE_MODEL_CHAIN, left)
         if left <= 0:
-            log(f"Free 3.5-flash daily quota limit reached (0/{config.MAX_FREE_REQUESTS} left). Using fallback models...")
+            log(f"Free 3-flash daily quota limit reached (0/{config.MAX_FREE_REQUESTS} left). Using fallback models...")
 
         res_text, _ = _generate_transcription(
             client, 
@@ -638,10 +639,15 @@ def _generate_transcription(client, pdf_file, log, usage_callback=None, model=No
         for attempt in range(max_retries):
             _check_cancelled(cancel_event)
             try:
-                response = client.models.generate_content(
-                    model=target_model,
-                    contents=prompt_contents
-                )
+                gen_kwargs = {
+                    "model": target_model,
+                    "contents": prompt_contents,
+                }
+                if target_model.startswith("gemini-3.7"):
+                    gen_kwargs["config"] = types.GenerateContentConfig(
+                        thinking_config=types.ThinkingConfig(thinking_level="LOW")
+                    )
+                response = client.models.generate_content(**gen_kwargs)
                 if not response or not getattr(response, "text", None):
                     raise ValueError(f"Empty or blocked response returned by {target_model}.")
                 

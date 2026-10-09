@@ -613,12 +613,12 @@ class App(BaseApp):
         left = config.get_remaining_requests()
         if left <= 0:
             self.usage_label.configure(
-                text=f"Free 3.5 Quota Left: 0 / {config.MAX_FREE_REQUESTS} (Using Fallback Models)",
+                text=f"Free 3-Flash Quota Left: 0 / {config.MAX_FREE_REQUESTS} (Using Fallback Models)",
                 text_color="#E67E22"
             )
         else:
             self.usage_label.configure(
-                text=f"Free 3.5 Quota Left: {left} / {config.MAX_FREE_REQUESTS}",
+                text=f"Free 3-Flash Quota Left: {left} / {config.MAX_FREE_REQUESTS}",
                 text_color="gray"
             )
 
@@ -670,7 +670,7 @@ class App(BaseApp):
             import tkinter.messagebox as msgbox
             if left <= 0:
                 quota_msg = (
-                    f"Processing this PDF requires ~{total_chunks} API request(s), but 0 requests remain in your daily free 3.5-flash quota.\n\n"
+                    f"Processing this PDF requires ~{total_chunks} API request(s), but 0 requests remain in your daily free 3-flash quota.\n\n"
                     f"Proceeding will process using Fallback Models (gemini-3.5-flash-lite / gemini-3.1-flash-lite).\n\n"
                     f"Do you want to proceed anyway?"
                 )
