@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
+from google.genai import types
 
 from pdf_parser_light.parse import (
     parse_page_range,
@@ -402,6 +403,8 @@ def test_cli_reset_quota_arg(capsys):
 
 def test_thinking_level_low_on_gemini_3_7():
     """Gemini 3.7 models must pass thinking_level='LOW', while non-3.7 models do not."""
+    if "thinking_level" not in getattr(types.ThinkingConfig, "model_fields", {}):
+        pytest.skip("thinking_level not supported in installed google-genai version")
     mock_client = MagicMock()
     mock_pdf = MagicMock()
     mock_response = MagicMock()

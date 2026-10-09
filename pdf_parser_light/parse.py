@@ -643,7 +643,7 @@ def _generate_transcription(client, pdf_file, log, usage_callback=None, model=No
                     "model": target_model,
                     "contents": prompt_contents,
                 }
-                if target_model.startswith("gemini-3.7"):
+                if target_model.startswith("gemini-3.7") and "thinking_level" in getattr(types.ThinkingConfig, "model_fields", {}):
                     gen_kwargs["config"] = types.GenerateContentConfig(
                         thinking_config=types.ThinkingConfig(thinking_level="LOW")
                     )
